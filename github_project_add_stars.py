@@ -79,7 +79,7 @@ def md_parse_add_stars(old_file_path):
     # print(u"{0}============>bengin...".format(old_file_path))
 
     old_name = basename(old_file_path)
-    # 一个执行开始标志
+    # 一个执行开始标志,2个md文件同时多线程后，用了没有意义了
     # logger.error(u"\n======================== {0} is beginning ========================\n".format(old_name))
 
     new_txt_path = '%s/data_files/new_%s_%s' %(os.getcwd(), datetime.datetime.now().strftime('%y-%m-%d_%H-%M-%S'), old_name)
@@ -117,11 +117,21 @@ def md_parse_add_stars(old_file_path):
             stars_tuple = markdown_add_stars(http_url)
             #print(stars_tuple)
             if stars_tuple:
-                stars_txt = "(Star:{0}) (Fork:{1}) (Watch:{2})".format(stars_tuple[1], stars_tuple[2], stars_tuple[0])
+                stars_txt = " ---- (Star:{0}) (Fork:{1}) (Watch:{2})".format(stars_tuple[1], stars_tuple[2], stars_tuple[0])
                 print(http_url)
                 print(stars_txt)
-                # 记得去掉回车换行
-                new_file.write(u"{0}  {1}  \n".format(line.strip('\n'), stars_txt) )
+                # 去掉原来旧的："  (Star:486) (Fork:46) (Watch:12)  "   例如： * [FileExplorer](https://github.com/Augustyniak/FileExplorer) 完整的文件资源管理器组件.  (Star:486) (Fork:46) (Watch:12)
+                match_old_stars = re.match(r'(?P<no_stars_info>.*?)(?P<stars_info>\s*----\s*\(Star:.*?\)\s*\(Fork:.*?\)\s*\(Watch:.*?\)\s*)',line.strip('\n'))
+                if match_old_stars: # 说明有旧的star、Fork、Watch信息了： 例如：  (Star:486) (Fork:46) (Watch:12)
+                    line_no_stars_info = match_old_stars.group("no_stars_info")
+                    #print("有旧的star信息了，头部：{}".format(line_no_stars_info ) )
+                    #print("有旧的star信息了，旧star信息：{}".format(match_old_stars.group("stars_info")))
+                    new_file.write(u"{0}  {1}  \n".format(line_no_stars_info, stars_txt) )
+
+                else:
+                    # 记得去掉回车换行
+                    new_file.write(u"{0}  {1}  \n".format(line.strip('\n'), stars_txt) )
+
             else:
                 print("此GitHub的url的项目已经不存在：{0}".format(http_url))
                 # 失效的github的url项目地址，写入logs/stars_url_error.log 日志文件里面
@@ -141,12 +151,6 @@ def md_parse_add_stars(old_file_path):
 
 
 
-
-
-
-
-
-
 if __name__ == '__main__':
 
     # error级别的日志文件：stars_url_error.log,并且在屏幕上输出info级别的log
@@ -162,10 +166,14 @@ if __name__ == '__main__':
 
     # 多线程执行
     threads = []
+
     tr = threading.Thread(target=md_parse_add_stars,args=("data_files/README.md",))
     threads.append(tr)
+
+
     ts = threading.Thread(target=md_parse_add_stars,args=("data_files/Swift.md",))
     threads.append(ts)
+
     for t in threads:
         t.start()
     for t in threads:
