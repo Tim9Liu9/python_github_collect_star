@@ -1,0 +1,2 @@
+# python_github_collect_star
+收集github上项目的star数、fork数、watch数
